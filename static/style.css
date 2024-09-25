@@ -12,7 +12,7 @@ body{
     margin: 20px auto;
 }
 .chat-window {
-    height: 400px; /* Fixed height */
+    height: 600px; /* Fixed height */
     overflow-y: auto; /* Makes it scrollable */
     padding: 10px;
     border: 1px solid #ddd;
@@ -41,3 +41,19 @@ body{
 .justify-content-end {
     justify-content: flex-end;
 }
+
+#drop-area {
+    border: 2px dashed #ccc;
+    border-radius: 20px;
+    min-height: 150px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+}
+#drop-area.dragover {
+    background-color: #f0f8ff;
+}
+
+/* Display Tables */
+
