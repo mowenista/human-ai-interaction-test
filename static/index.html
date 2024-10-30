@@ -54,10 +54,23 @@
             <div class="card-body">
                 <div class="chat-window" id="chat-window">
                     <div class="d-flex">
-                        <img src="/static/aiphoto.webp" class="rounded-pill mx-1" width="70" alt="AI Profile Image">
+                        <img src="/static/aiphoto.webp" class="rounded-pill mx-1 " width="70" alt="AI Profile Image">
                         <div class="chat-bubble chat-bubble-ai">Hello! How can I help you today?</div>
-                    </div>  
+                    </div> 
                 </div>
+            </div>
+            <div id="loading-spinner" class="d-none text-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="45" stroke="#007bff" stroke-width="5" fill="none" stroke-dasharray="283" stroke-dashoffset="0">
+                        <animate
+                            attributeName="stroke-dashoffset"
+                            from="0"
+                            to="283"
+                            dur="1.5s"
+                            repeatCount="indefinite" />
+                    </circle>
+                </svg>
+                <p>AI is thinking...</p>
             </div>
         </div>
 
@@ -70,6 +83,7 @@
                 </div>
                 <div class="col-2">
                     <button class="form-rounded btn btn-secondary mx-1" disabled type="button" id="send-btn">Send</button>
+                    <button class="form-rounded btn btn-secondary mx-1" id="clear-chat-btn">Clear Chat</button>
                 </div>
             </div>
         </div>

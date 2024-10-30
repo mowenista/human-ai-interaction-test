@@ -8,11 +8,46 @@ console.log("sendBtn:", sendBtn);
 console.log("promptInput:", promptInput);
 console.log("chatWindow:", chatWindow);
 
+// Clear chat function
+function clearChat() {
+    // Keep the initial AI message and clear the rest
+    const initialMessage = chatWindow.firstElementChild; // Get the first element (initial AI message)
+
+    // Clear all other messages
+    while (chatWindow.children.length > 1) {
+        chatWindow.removeChild(chatWindow.lastChild);
+    }
+
+    // Make a fetch request to the backend to clear the chat history
+    fetch('/clear-chat', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        console.log("Chat history cleared successfully.");
+    })
+    .catch(error => {
+        console.error("Error clearing chat history:", error);
+    });
+}
+
+// Add event listener to the clear chat button
+document.querySelector('#clear-chat-btn').addEventListener('click', clearChat);
+
+
+
+
 // Enable send button based on input
 promptInput.addEventListener('input', function(event) {
     sendBtn.disabled = event.target.value ? false : true;
 });
 
+const loadingSpinner = document.querySelector('#loading-spinner');
 
 // Send message function
 function sendMessage() {
@@ -30,6 +65,9 @@ function sendMessage() {
     userMessage.className = 'd-flex justify-content-end';
     userMessage.innerHTML = `<div class="chat-bubble chat-bubble-user">${prompt}</div>`;
     chatWindow.appendChild(userMessage);
+
+    // Show the loading spinner
+    loadingSpinner.classList.remove('d-none');
 
     // Scroll to the bottom of the chat window (in case of overflow)
     chatWindow.scrollTop = chatWindow.scrollHeight;
@@ -59,7 +97,7 @@ function sendMessage() {
         const botMessage = document.createElement('div');
         botMessage.className = 'd-flex';
         botMessage.innerHTML = `
-            <img src="/static/aiphoto.webp" class="rounded-pill mx-1" width="70" alt="AI Profile Image">
+            <img src="/static/aiphoto.webp" width="70" height="70 border-radius="50%" class="mx-1 rounded-pill" alt="AI Profile Image">
             <div class="chat-bubble chat-bubble-ai">${data.response}</div>`;
         chatWindow.appendChild(botMessage);
 
@@ -79,6 +117,9 @@ function sendMessage() {
 
         // Scroll to the bottom of the chat window
         chatWindow.scrollTop = chatWindow.scrollHeight;
+
+        // Hide the loading spinner
+        loadingSpinner.classList.add('d-none');
     })
     .catch(error => {
         // Log detailed fetch error
@@ -89,6 +130,8 @@ function sendMessage() {
         errorMessage.className = 'alert alert-danger';
         errorMessage.textContent = `An error occurred: ${error.message}`;
         document.body.appendChild(errorMessage);
+        // Hide the loading spinner
+        loadingSpinner.classList.add('d-none');
     });
 }
 
@@ -249,3 +292,4 @@ togglePreviewBtn.addEventListener('click', () => {
         togglePreviewBtn.textContent = 'Show Table Preview';
     }
 });
+

@@ -35,8 +35,17 @@ body{
     color: black;
     margin-right: auto;
 }
+.chat-bubble-img {
+    width: 70px; /* Fixed width */
+    height: 70px; /* Let the height adjust automatically */
+    object-fit: cover; /* Maintain aspect ratio without distortion */
+    border-radius: 50%; /* Keep the image rounded */
+    aspect-ratio: 1 / 1; /* Enforce a square aspect ratio */
+    max-width: 100%; /* Ensure it doesn't exceed the width of its container */
+}
 .d-flex {
     display: flex;
+    align-items: flex-start;
 }
 .justify-content-end {
     justify-content: flex-end;
@@ -57,3 +66,12 @@ body{
 
 /* Display Tables */
 
+
+.spinner {
+    animation: spin 3s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}

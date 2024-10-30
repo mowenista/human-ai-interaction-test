@@ -178,15 +178,14 @@ def generate_chart_description(query, spec):
     return description
 
 
-def get_generate_chart(query: str, df: pd.DataFrame):
+def get_generate_chart(query: str, df: pd.DataFrame) -> QueryResponse:
     print("generate chart")
     # Generate Vega-Lite specification based on the prompt and dataframe
     # Define a retry limit to avoid infinite loops
-    max_retries = 1
+    max_retries = 3
     attempts = 0
     
     while attempts < max_retries:
-        print(f"Attempt {attempts}\n")
         try:
             vega_lite_spec = generate_chart(query, df)
             print(f"Generated Vega-Lite specification: {vega_lite_spec}")
@@ -222,7 +221,7 @@ def get_generate_chart(query: str, df: pd.DataFrame):
                 }
             }
 
-            return (chart_description, vega_spec)
+            return QueryResponse(response=chart_description, vega_spec=vega_spec)
         except ValueError as value_error:
             print(f"ValueError during chart generation: {value_error}")
             attempts += 1
@@ -268,9 +267,8 @@ def get_data_analysis(query: str, df):
             {
                 "role": "user",
                 "content": (
-                    f'''Write Python code to solve the following: {query}.Ignore any visualizations, just calculate and summarize statistics. Use the dataframe, df, which has headers: {df.columns}
-                    Make sure all results are printed using print(...) statements. If multiple things need to printed from a list, print them all on one line. 
-                    Don't include any extra text, the output should only be python code. If the question asks for multiple answers respond in a tuple or dictionary'''
+                    f'''Write Python code to solve the following: {query}. Use the dataframe, df, which has headers: {df.columns}
+                    Make sure all results are printed using print(...) statements. Don't include any extra text, the output should only be python code. If the question asks for multiple answers respond in a tuple or dictionary'''
                 ),
             },
         ],
@@ -320,7 +318,7 @@ def get_data_analysis(query: str, df):
         detailed_response = follow_up_response.choices[0].message.content
         
         # Step 5: Return both the result and the detailed response
-        return (detailed_response, 0)
+        return QueryResponse(response=detailed_response)
             
 
             
@@ -383,10 +381,9 @@ You run in a loop of Thought, Action, Observation in the following manner to ans
 Question: the input question you must answer
 
 Thought: you should always think about what to do.
-Action: the tool name, should be one of [generate_chart_tool, data_analysis_tool]. If no tool needed, just output "no tool". Use the tool that best adds to any previous records of results.
-Action Input: the input to the tool in a json format ({{"arg name": "arg value"}}). Otherwise, empty json object {{}}
+Action: the tool name, should be one of [{tools}]. If no tool needed, just output "no tool".
 
-You will return this action, then wait for the Observation.
+You will return this action and action input, then wait for the Observation.
 
 You will then call again with the result of the action.
 
@@ -403,66 +400,40 @@ def react_query(query, system_prompt, tool_map,df, max_iterations=3):
     messages = [{"role": "system", "content": system_prompt}]
     messages.append({"role": "user", "content": query})
     i = 0
-    final_response = ("test")
-    responses = ""
-    vega_spec = None
 
     while i < max_iterations:
-        print("Round: " + str(i) + '\n \n')
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=messages,
         )
-
+        
         assistant_message = response.choices[0].message.content
         messages.append({"role": "assistant", "content": assistant_message})
         
         # Pattern to capture the action name and action input
-        pattern = r'Action:\s*(\w+)\s*Action Input:\s*(\{.*?\})'
+        pattern = r'Action:\s*(.*?)\nAction Input:\s*(.*?)}'
         match = re.search(pattern, assistant_message, re.DOTALL)
 
         if match:
             action_name = match.group(1).strip()
             if action_name == "no tool":
                 break
-            print("TEST: " + str(tool_map[action_name]['function']['name']))
+            
+            
             # Call the appropriate function from the tool map
-            f = tool_map[action_name]['function']['name'].strip()
-            print(f, type(f))
-            if f == "get_generate_chart":
-
-                result = get_generate_chart(query, df)
-            elif f == "get_data_analysis":
-                print("data")
-                result = get_data_analysis(query, df)
-            else:
-                break
-    
-            print("RESULT")
-            #print(type(result), result)
-            observation = f'Observation: action name: {action_name}, result: {result[0]}'
-            responses += " | Next Result | " + str(result[0])
-            if result[1] != 0:
-                vega_spec = result[1]
+            result = tool_map[action_name](query, df)
+            observation = f'Observation: action name: {action_name}, result: {result}'
 
             # Log the observation for debugging
-            #print("Observation: " + observation)
+            print(observation)
 
             # Append the observation to the messages
             messages.append({"role": "assistant", "content": f"Observation: {observation}"})
-            i += 1
             continue
         else:
-            i += 1
             break
-    print(responses)
-    if vega_spec != None:
-        return QueryResponse(response=responses, vega_spec=vega_spec)
-    else:
-        return QueryResponse(response=responses)
-    # else:
-    #     print("fail")
-    #     return QueryResponse(response="fail")
+
+    return assistant_message
 
 
 # Endpoint to handle user queries and return a response
@@ -492,24 +463,12 @@ async def query_openai(request: QueryRequest):
                 return QueryResponse(response="The uploaded CSV file is empty. Please upload a valid CSV file.")
 
             query = request.prompt
-            out = react_query(query,vanila_react_prompt, tool_map, df, 2)
-            if out.response == 'fail':
-                raise HTTPException(status_code=500, detail="An error occurred during calculation")
-        
-            f_prompt =f''' Take the following set of results and combine them into one final, readable output from an ai: {out.response}'''
-            simplefied = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[{"role": "user", "content":f_prompt }]
-            ).choices[0].message.content
-
-            if out.vega_spec == None:
-                return QueryResponse(response=simplefied)
-
+            out = react_query(query,vanila_react_prompt, tool_map, df,3)
 
             # Debugging the prompt received
             print(f"Received prompt: {query}")
 
-            return QueryResponse(response=simplefied, vega_spec=out.vega_spec)
+            return QueryResponse(response=out)
             # prompt = f'''
             # The user provided a dataset with the following details (labels): {df.columns}
             # User Query: {query}
